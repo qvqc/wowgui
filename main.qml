@@ -81,7 +81,7 @@ ApplicationWindow {
     readonly property string localDaemonAddress : "localhost:" + getDefaultDaemonRpcPort(persistentSettings.nettype)
     property string currentDaemonAddress;
     property int disconnectedEpoch: 0
-    property int estimatedBlockchainSize: 75 // GB
+    property int estimatedBlockchainSize: 2 // GB
     property alias viewState: rootItem.state
     property string prevSplashText;
     property bool splashDisplayedBeforeButtonRequest;
@@ -93,17 +93,9 @@ ApplicationWindow {
     property real fiatPriceXMREUR: 0
     property var fiatPriceAPIs: {
         return {
-            "kraken": {
-                "xmrusd": "https://api.kraken.com/0/public/Ticker?pair=XMRUSD",
-                "xmreur": "https://api.kraken.com/0/public/Ticker?pair=XMREUR"
-            },
             "coingecko": {
-                "xmrusd": "https://api.coingecko.com/api/v3/simple/price?ids=monero&vs_currencies=usd",
-                "xmreur": "https://api.coingecko.com/api/v3/simple/price?ids=monero&vs_currencies=eur"
-            },
-            "cryptocompare": {
-                "xmrusd": "https://min-api.cryptocompare.com/data/price?fsym=XMR&tsyms=USD",
-                "xmreur": "https://min-api.cryptocompare.com/data/price?fsym=XMR&tsyms=EUR",
+                "wowusd": "https://api.coingecko.com/api/v3/simple/price?ids=wownero&vs_currencies=usd",
+                "woweur": "https://api.coingecko.com/api/v3/simple/price?ids=wownero&vs_currencies=eur"
             }
         }
     }
@@ -328,7 +320,7 @@ ApplicationWindow {
 
         if(!wallet || wallet === undefined || wallet.path === undefined){
             informationPopup.title  = qsTr("Error") + translationManager.emptyString;
-            informationPopup.text = qsTr("Couldn't open wallet: ") + 'please restart GUI.';
+            informationPopup.text = qsTr("Couldn't open wallet: ") + 'please restart App.';
             informationPopup.icon = StandardIcon.Critical
             informationPopup.open()
             informationPopup.onCloseCallback = function() {
@@ -432,8 +424,8 @@ ApplicationWindow {
     }
 
     function onUriHandler(uri){
-        if(uri.startsWith("monero://")){
-            var address = uri.substring("monero://".length);
+        if(uri.startsWith("wownero://")){
+            var address = uri.substring("wownero://".length);
 
             var params = {}
             if(address.length === 0) return;
@@ -705,7 +697,7 @@ ApplicationWindow {
         // resume refresh
         currentWallet.startRefresh();
         informationPopup.title = qsTr("Daemon failed to start") + translationManager.emptyString;
-        informationPopup.text  = error + ".\n\n" + qsTr("Please check your wallet and daemon log for errors. You can also try to start %1 manually.").arg((isWindows)? "monerod.exe" : "monerod")
+        informationPopup.text  = error + ".\n\n" + qsTr("Please check your wallet and daemon log for errors. You can also try to start %1 manually.").arg((isWindows)? "wownerod.exe" : "wownerod")
         informationPopup.icon  = StandardIcon.Critical
         informationPopup.onCloseCallback = null
         informationPopup.open();
@@ -1143,18 +1135,18 @@ ApplicationWindow {
                 return;
             }
 
-            var key = currency === "xmreur" ? "XXMRZEUR" : "XXMRZUSD";
+            var key = currency === "woweur" ? "XXMRZEUR" : "XXMRZUSD";
             var ticker = resp.result[key]["o"];
             return ticker;
         } else if(resp._url.startsWith("https://api.coingecko.com/api/v3/")){
-            var key = currency === "xmreur" ? "eur" : "usd";
-            if(!resp.hasOwnProperty("monero") || !resp["monero"].hasOwnProperty(key)){
+            var key = currency === "woweur" ? "eur" : "usd";
+            if(!resp.hasOwnProperty("wownero") || !resp["wownero"].hasOwnProperty(key)){
                 appWindow.fiatApiError("Coingecko API has error(s)");
                 return;
             }
-            return resp["monero"][key];
+            return resp["wownero"][key];
         } else if(resp._url.startsWith("https://min-api.cryptocompare.com/data/")){
-            var key = currency === "xmreur" ? "EUR" : "USD";
+            var key = currency === "woweur" ? "EUR" : "USD";
             if(!resp.hasOwnProperty(key)){
                 appWindow.fiatApiError("cryptocompare API has error(s)");
                 return;
@@ -1329,7 +1321,7 @@ ApplicationWindow {
         id: persistentSettings
         fileName: {
             if(isTails && tailsUsePersistence)
-                return homePath + "/Persistent/Monero/monero-core.conf";
+                return homePath + "/Persistent/Wownero/wownero-app.conf";
             return "";
         }
 
@@ -1357,21 +1349,21 @@ ApplicationWindow {
         property string blockchainDataDir: ""
         property bool useRemoteNode: false
         property string remoteNodeAddress: ""
-        property string bootstrapNodeAddress: ""
-        property bool segregatePreForkOutputs: true
-        property bool keyReuseMitigation2: true
+        property string bootstrapNodeAddress: "node.wowne.ro:34568"
+        property bool segregatePreForkOutputs: false
+        property bool keyReuseMitigation2: false
         property int segregationHeight: 0
         property int kdfRounds: 1
         property bool hideBalance: false
         property bool lockOnUserInActivity: true
         property int walletMode: 2
         property int lockOnUserInActivityInterval: 10  // minutes
-        property bool blackTheme: true
+        property bool blackTheme: false
 
         property bool fiatPriceEnabled: false
         property bool fiatPriceToggle: false
-        property string fiatPriceProvider: "kraken"
-        property string fiatPriceCurrency: "xmrusd"
+        property string fiatPriceProvider: "coingecko"
+        property string fiatPriceCurrency: "wowusd"
 
         Component.onCompleted: {
             MoneroComponents.Style.blackTheme = persistentSettings.blackTheme
@@ -1980,11 +1972,11 @@ ApplicationWindow {
             var version = parts[0]
             var hash = parts[1]
             var user_url = parts[2]
-            var msg = qsTr("New version of Monero v%1 is available.").arg(version)
+            var msg = qsTr("New version of Wownero v%1 is available.").arg(version)
             if (isMac || isWindows || isLinux) {
                 msg += "<br><br>%1:<br>%2<br><br>%3:<br>%4".arg(qsTr("Download")).arg(user_url).arg(qsTr("SHA256 Hash")).arg(hash) + translationManager.emptyString
             } else {
-                msg += " " + qsTr("Check out getmonero.org") + translationManager.emptyString
+                msg += " " + qsTr("Check out wownero.org") + translationManager.emptyString
             }
             notifier.show(msg)
         } else {
@@ -1993,7 +1985,7 @@ ApplicationWindow {
     }
 
     function checkUpdates() {
-        walletManager.checkUpdatesAsync("monero-gui", "gui")
+        walletManager.checkUpdatesAsync("wownero-app", "app")
     }
 
     Timer {
@@ -2061,9 +2053,9 @@ ApplicationWindow {
             case NetworkType.STAGENET:
                 return 38081;
             case NetworkType.TESTNET:
-                return 28081;
+                return 11181;
             default:
-                return 18081;
+                return 34568;
         }
     }
 

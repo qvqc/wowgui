@@ -177,9 +177,9 @@ int main(int argc, char *argv[])
 
     MainApp app(argc, argv);
 
-    app.setApplicationName("monero-core");
-    app.setOrganizationDomain("getmonero.org");
-    app.setOrganizationName("monero-project");
+    app.setApplicationName("wownero-app");
+    app.setOrganizationDomain("wownero.org");
+    app.setOrganizationName("wownero-project");
 
     // Ask to enable Tails OS persistence mode, it affects:
     // - Log file location
@@ -201,9 +201,9 @@ int main(int argc, char *argv[])
     #endif
 
     if(isTails && TailsOS::usePersistence){
-        moneroAccountsDir = QDir::homePath() + "/Persistent/Monero/wallets";
+        moneroAccountsDir = QDir::homePath() + "/Persistent/Wownero/wallets";
     } else if (!moneroAccountsRootDir.empty()) {
-        moneroAccountsDir = moneroAccountsRootDir.at(0) + "/Monero/wallets";
+        moneroAccountsDir = moneroAccountsRootDir.at(0) + "/Wownero/wallets";
     } else {
         qCritical() << "Error: accounts root directory could not be set";
         return 1;
@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
 
     // Log settings
     const QString logPath = getLogPath(parser.value(logPathOption));
-    Monero::Wallet::init(argv[0], "monero-wallet-gui", logPath.toStdString().c_str(), true);
+    Monero::Wallet::init(argv[0], "wownero-app", logPath.toStdString().c_str(), true);
     qInstallMessageHandler(messageHandler);
 
     // loglevel is configured in main.qml. Anything lower than
@@ -289,7 +289,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    qWarning().nospace().noquote() << "Qt:" << QT_VERSION_STR << " GUI:" << GUI_VERSION
+    qWarning().nospace().noquote() << "Qt:" << QT_VERSION_STR << " App:" << GUI_VERSION
                                    << " | screen: " << rect.width() << "x" << rect.height()
                                    << " - dpi: " << dpi << " - ratio:" << calculated_ratio;
 
@@ -423,7 +423,7 @@ int main(int argc, char *argv[])
     if (accountName.isEmpty())
         accountName = qgetenv("USERNAME"); // Windows
     if (accountName.isEmpty())
-        accountName = "My monero Account";
+        accountName = "My wownero Account";
 
     engine.rootContext()->setContextProperty("defaultAccountName", accountName);
     engine.rootContext()->setContextProperty("homePath", QDir::homePath());
