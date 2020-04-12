@@ -160,7 +160,6 @@ LIBS_COMMON = \
     -lwallet_merged \
     -llmdb \
     -lepee \
-    -lunbound \
     -lsodium \
     -leasylogging \
     -lrandomx
@@ -326,7 +325,7 @@ linux {
         QMAKE_LFLAGS += -static-libgcc -static-libstdc++
         QMAKE_LIBDIR += /usr/local/ssl/lib
    #     contains(QT_ARCH, x86_64) {
-            LIBS+= -lunbound \
+            LIBS+= \
                    -lusb-1.0 \
                    -lhidapi-hidraw \
                    -ludev

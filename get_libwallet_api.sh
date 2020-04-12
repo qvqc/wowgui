@@ -276,7 +276,6 @@ if [ -d $MONERO_DIR/build/$BUILD_TYPE/external/unbound ]; then
     pushd $MONERO_DIR/build/$BUILD_TYPE/external/unbound
     # no need to make, it was already built as dependency for libwallet
     # make -j$CPU_CORE_COUNT
-    $make_exec install -j$CPU_CORE_COUNT
     popd
 fi
 
