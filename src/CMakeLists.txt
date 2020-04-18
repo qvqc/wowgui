@@ -135,7 +135,6 @@ target_link_libraries(wownero-app
     ${CMAKE_BINARY_DIR}/lib/libwallet_merged.a
     ${LMDB_LIBRARY}
     ${CMAKE_BINARY_DIR}/monero/contrib/epee/src/libepee.a
-    ${CMAKE_BINARY_DIR}/monero/external/unbound/libunbound.a
     ${SODIUM_LIBRARY}
     ${CMAKE_BINARY_DIR}/monero/external/easylogging++/libeasylogging.a
     ${CMAKE_BINARY_DIR}/monero/src/blockchain_db/libblockchain_db.a

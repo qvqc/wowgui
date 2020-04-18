@@ -1,6 +1,6 @@
 #!/bin/bash
 MONERO_URL=https://github.com/wownero/wownero.git
-MONERO_BRANCH=master
+MONERO_BRANCH=dev-v0.8
 
 pushd $(pwd)
 ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -17,7 +17,7 @@ if [ ! -d $MONERO_DIR/src ]; then
 fi
 git submodule update --remote
 git -C $MONERO_DIR fetch
-git -C $MONERO_DIR checkout master
+git -C $MONERO_DIR checkout $MONERO_BRANCH
 
 # get monero core tag
 pushd $MONERO_DIR
@@ -276,7 +276,6 @@ if [ -d $MONERO_DIR/build/$BUILD_TYPE/external/unbound ]; then
     pushd $MONERO_DIR/build/$BUILD_TYPE/external/unbound
     # no need to make, it was already built as dependency for libwallet
     # make -j$CPU_CORE_COUNT
-    $make_exec install -j$CPU_CORE_COUNT
     popd
 fi
 
