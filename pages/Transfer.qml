@@ -27,6 +27,7 @@
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import QtQuick 2.9
+import QtQuick.Controls 1.4
 import QtQuick.Layouts 1.1
 import QtQuick.Dialogs 1.2
 import moneroComponents.Clipboard 1.0
@@ -38,6 +39,7 @@ import "../components"
 import "../components" as MoneroComponents
 import "." 1.0
 import "../js/TxUtils.js" as TxUtils
+import "../js/Utils.js" as Utils
 
 
 Rectangle {
@@ -162,91 +164,6 @@ Rectangle {
           }
       }
 
-      GridLayout {
-          columns: appWindow.walletMode < 2 ? 1 : 2
-          Layout.fillWidth: true
-          columnSpacing: 32
-
-          ColumnLayout {
-              Layout.fillWidth: true
-              Layout.minimumWidth: 200
-
-              // Amount input
-              LineEdit {
-                  id: amountLine
-                  Layout.fillWidth: true
-                  inlineIcon: true
-                  labelText: "<style type='text/css'>a {text-decoration: none; color: #858585; font-size: 14px;}</style>\
-                                   %1 <a href='#'>(%2)</a>".arg(qsTr("Amount")).arg(qsTr("Change account"))
-                             + translationManager.emptyString
-                  copyButton: !isNaN(amountLine.text) && persistentSettings.fiatPriceEnabled
-                  copyButtonText: fiatApiCurrencySymbol() + " ~" + fiatApiConvertToFiat(amountLine.text)
-                  copyButtonEnabled: false
-
-                  onLabelLinkActivated: {
-                      middlePanel.accountView.selectAndSend = true;
-                      appWindow.showPageRequest("Account")
-                  }
-                  placeholderText: "0.00"
-                  width: 100
-                  fontBold: true
-                  inlineButtonText: qsTr("All") + translationManager.emptyString
-                  inlineButton.onClicked: amountLine.text = "(all)"
-                  onTextChanged: {
-                        const match = amountLine.text.match(/^0+(\d.*)/);
-                        if (match) {
-                            const cursorPosition = amountLine.cursorPosition;
-                            amountLine.text = match[1];
-                            amountLine.cursorPosition = Math.max(cursorPosition, 1) - 1;
-                        } else if(amountLine.text.indexOf('.') === 0){
-                            amountLine.text = '0' + amountLine.text;
-                            if (amountLine.text.length > 2) {
-                                amountLine.cursorPosition = 1;
-                            }
-                        }
-                        amountLine.error = walletManager.amountFromString(amountLine.text) > appWindow.getUnlockedBalance()
-                  }
-
-                  validator: RegExpValidator {
-                      regExp: /^(\d{1,8})?([\.]\d{1,12})?$/
-                  }
-              }
-          }
-
-          ColumnLayout {
-              visible: appWindow.walletMode >= 2
-              Layout.fillWidth: true
-              Label {
-                  id: transactionPriority
-                  Layout.topMargin: 12
-                  text: qsTr("Transaction priority") + translationManager.emptyString
-                  fontBold: false
-                  fontSize: 16
-              }
-              // Note: workaround for translations in listElements
-              // ListElement: cannot use script for property value, so
-              // code like this wont work:
-              // ListElement { column1: qsTr("LOW") + translationManager.emptyString ; column2: ""; priority: PendingTransaction.Priority_Low }
-              // For translations to work, the strings need to be listed in
-              // the file components/StandardDropdown.qml too.
-
-              // Priorites after v5
-              ListModel {
-                   id: priorityModelV5
-
-                   ListElement { column1: qsTr("Normal (x1 fee)") ; column2: ""; priority: 2 }
-               }
-
-              StandardDropdown {
-                  Layout.fillWidth: true
-                  id: priorityDropdown
-                  Layout.topMargin: 5
-                  currentIndex: 0
-              }
-          }
-          // Make sure dropdown is on top
-          z: parent.z + 1
-      }
 
       // recipient address input
       RowLayout {
@@ -256,10 +173,9 @@ Rectangle {
           LineEditMulti {
               id: addressLine
               spacing: 0
+              inputPaddingRight: inlineButtonVisible && inlineButton2Visible ? 100 : 60
               fontBold: true
-              labelText: qsTr("<style type='text/css'>a {text-decoration: none; color: #858585; font-size: 14px;}</style>\
-                %1 <a href='#'>(%2)</a>").arg(qsTr("Address")).arg(qsTr("Address book"))
-                + translationManager.emptyString
+              labelText: qsTr("Address") + translationManager.emptyString
               labelButtonText: qsTr("Resolve") + translationManager.emptyString
               placeholderText: {
                   if(persistentSettings.nettype == NetworkType.MAINNET){
@@ -272,10 +188,6 @@ Rectangle {
               }
               wrapMode: Text.WrapAnywhere
               addressValidation: true
-              onInputLabelLinkActivated: {
-                  middlePanel.addressBookView.selectAndSend = true;
-                  appWindow.showPageRequest("AddressBook");
-              }
               onTextChanged: {
                   const parsed = walletManager.parse_uri_to_object(text);
                   if (!parsed.error) {
@@ -285,16 +197,27 @@ Rectangle {
                     setDescription(parsed.tx_description);
                   }
               }
-              inlineButton.text: FontAwesome.qrcode
+              inlineButton.text: FontAwesome.addressBook
+              inlineButton.buttonHeight: 30
               inlineButton.fontPixelSize: 22
               inlineButton.fontFamily: FontAwesome.fontFamily
               inlineButton.textColor: MoneroComponents.Style.defaultFontColor
-              inlineButton.buttonColor: MoneroComponents.Style.orange
               inlineButton.onClicked: {
-                  cameraUi.state = "Capture"
-                  cameraUi.qrcode_decoded.connect(updateFromQrCode)
+                  middlePanel.addressBookView.selectAndSend = true;
+                  appWindow.showPageRequest("AddressBook");
               }
-              inlineButtonVisible : appWindow.qrScannerEnabled && !addressLine.text
+              inlineButtonVisible: true
+              
+              inlineButton2.text: FontAwesome.qrcode
+              inlineButton2.buttonHeight: 30
+              inlineButton2.fontPixelSize: 22
+              inlineButton2.fontFamily: FontAwesome.fontFamily
+              inlineButton2.textColor: MoneroComponents.Style.defaultFontColor
+              inlineButton2.onClicked: {
+                   cameraUi.state = "Capture"
+                   cameraUi.qrcode_decoded.connect(updateFromQrCode)
+              }
+              inlineButton2Visible: appWindow.qrScannerEnabled
           }
       }
 
@@ -340,6 +263,141 @@ Rectangle {
               }
               else {
                   oa_message(qsTr("No address found"))
+              }
+          }
+      }
+
+      GridLayout {
+          columns: appWindow.walletMode < 2 ? 1 : 2
+          Layout.fillWidth: true
+          columnSpacing: 32
+
+          ColumnLayout {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 200
+
+              // Amount input
+              LineEdit {
+                  id: amountLine
+                  Layout.fillWidth: true
+                  inlineIcon: true
+                  labelText: "<style type='text/css'>a {text-decoration: none; color: #858585; font-size: 14px;}</style>\
+                                   %1 <a href='#'>(%2)</a>".arg(qsTr("Amount")).arg(qsTr("Change account"))
+                             + translationManager.emptyString
+                  copyButton: !isNaN(amountLine.text) && persistentSettings.fiatPriceEnabled
+                  copyButtonText: "~%1 %2".arg(fiatApiConvertToFiat(amountLine.text)).arg(fiatApiCurrencySymbol())
+                  copyButtonEnabled: false
+
+                  onLabelLinkActivated: {
+                      middlePanel.accountView.selectAndSend = true;
+                      appWindow.showPageRequest("Account")
+                  }
+                  placeholderText: "0.00"
+                  width: 100
+                  fontBold: true
+                  inlineButtonText: qsTr("All") + translationManager.emptyString
+                  inlineButton.onClicked: amountLine.text = "(all)"
+                  onTextChanged: {
+                        const match = amountLine.text.match(/^0+(\d.*)/);
+                        if (match) {
+                            const cursorPosition = amountLine.cursorPosition;
+                            amountLine.text = match[1];
+                            amountLine.cursorPosition = Math.max(cursorPosition, 1) - 1;
+                        } else if(amountLine.text.indexOf('.') === 0){
+                            amountLine.text = '0' + amountLine.text;
+                            if (amountLine.text.length > 2) {
+                                amountLine.cursorPosition = 1;
+                            }
+                        }
+                        amountLine.error = walletManager.amountFromString(amountLine.text) > appWindow.getUnlockedBalance()
+                  }
+
+                  validator: RegExpValidator {
+                      regExp: /^(\d{1,8})?([\.]\d{1,12})?$/
+                  }
+              }
+
+                MoneroComponents.TextPlain {
+                    id: feeLabel
+                    Layout.alignment: Qt.AlignRight
+                    Layout.topMargin: 12
+                    font.family: MoneroComponents.Style.fontRegular.name
+                    font.pixelSize: 14
+                    color: MoneroComponents.Style.defaultFontColor
+                    property bool estimating: false
+                    property var estimatedFee: null
+                    property string estimatedFeeFiat: {
+                        if (!persistentSettings.fiatPriceEnabled || estimatedFee == null) {
+                            return "";
+                        }
+                        const fiatFee = fiatApiConvertToFiat(estimatedFee);
+                        return " (%1 %3)".arg(fiatFee < 0.01 ? "<0.01" : "~" + fiatFee).arg(fiatApiCurrencySymbol());
+                    }
+                    property var fee: {
+                        estimatedFee = null;
+                        estimating = sendButton.enabled;
+                        if (!sendButton.enabled) {
+                            return;
+                        }
+                        currentWallet.estimateTransactionFeeAsync(
+                            addressLine.text,
+                            walletManager.amountFromString(amountLine.text),
+                            priorityModelV5.get(priorityDropdown.currentIndex).priority,
+                            function (amount) {
+                                estimatedFee = Utils.removeTrailingZeros(amount);
+                                estimating = false;
+                            });
+                    }
+                    text: {
+                        if (!sendButton.enabled || estimatedFee == null) {
+                            return ""
+                        }
+                        return "%1: ~%2 XMR".arg(qsTr("Fee")).arg(estimatedFee) +
+                            estimatedFeeFiat +
+                            translationManager.emptyString;
+                    }
+
+                    BusyIndicator {
+                        anchors.right: parent.right
+                        running: feeLabel.estimating
+                        height: parent.height
+                    }
+                }
+          }
+
+          ColumnLayout {
+              visible: appWindow.walletMode >= 2
+              Layout.alignment: Qt.AlignTop
+              Label {
+                  id: transactionPriority
+                  Layout.topMargin: 0
+                  text: qsTr("Transaction priority") + translationManager.emptyString
+                  fontBold: false
+                  fontSize: 16
+              }
+              // Note: workaround for translations in listElements
+              // ListElement: cannot use script for property value, so
+              // code like this wont work:
+              // ListElement { column1: qsTr("LOW") + translationManager.emptyString ; column2: ""; priority: PendingTransaction.Priority_Low }
+              // For translations to work, the strings need to be listed in
+              // the file components/StandardDropdown.qml too.
+
+              // Priorites after v5
+              ListModel {
+                   id: priorityModelV5
+
+                   ListElement { column1: qsTr("Automatic") ; column2: ""; priority: 0}
+                   ListElement { column1: qsTr("Slow (x0.2 fee)") ; column2: ""; priority: 1}
+                   ListElement { column1: qsTr("Normal (x1 fee)") ; column2: ""; priority: 2 }
+                   ListElement { column1: qsTr("Fast (x5 fee)") ; column2: ""; priority: 3 }
+                   ListElement { column1: qsTr("Fastest (x200 fee)")  ; column2: "";  priority: 4 }
+               }
+
+              StandardDropdown {
+                  Layout.preferredWidth: 200
+                  id: priorityDropdown
+                  Layout.topMargin: 5
+                  currentIndex: 0
               }
           }
       }

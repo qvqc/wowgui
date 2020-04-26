@@ -41,6 +41,8 @@
 #include <QMutexLocker>
 #include <QString>
 
+#include "qt/updater.h"
+
 class WalletPassphraseListenerImpl : public  Monero::WalletListener
 {
 public:
@@ -151,14 +153,14 @@ void WalletManager::openWalletAsync(const QString &path, const QString &password
 }
 
 
-Wallet *WalletManager::recoveryWallet(const QString &path, const QString &memo, NetworkType::Type nettype, quint64 restoreHeight, quint64 kdfRounds)
+Wallet *WalletManager::recoveryWallet(const QString &path, const QString &seed, const QString &seed_offset, NetworkType::Type nettype, quint64 restoreHeight, quint64 kdfRounds)
 {
     QMutexLocker locker(&m_mutex);
     if (m_currentWallet) {
         qDebug() << "Closing open m_currentWallet" << m_currentWallet;
         delete m_currentWallet;
     }
-    Monero::Wallet * w = m_pimpl->recoveryWallet(path.toStdString(), "", memo.toStdString(), static_cast<Monero::NetworkType>(nettype), restoreHeight, kdfRounds);
+    Monero::Wallet * w = m_pimpl->recoveryWallet(path.toStdString(), "", seed.toStdString(), static_cast<Monero::NetworkType>(nettype), restoreHeight, kdfRounds, seed_offset.toStdString());
     m_currentWallet = new Wallet(w);
     return m_currentWallet;
 }
@@ -464,11 +466,31 @@ bool WalletManager::saveQrCode(const QString &code, const QString &path) const
 void WalletManager::checkUpdatesAsync(const QString &software, const QString &subdir)
 {
     m_scheduler.run([this, software, subdir] {
-        emit checkUpdatesComplete(checkUpdates(software, subdir));
+        const auto updateInfo = Monero::WalletManager::checkUpdates(software.toStdString(), subdir.toStdString());
+        if (!std::get<0>(updateInfo))
+        {
+            return;
+        }
+
+        const QString version = QString::fromStdString(std::get<1>(updateInfo));
+        const QByteArray hashFromDns = QByteArray::fromHex(QString::fromStdString(std::get<2>(updateInfo)).toUtf8());
+        const QString downloadUrl = QString::fromStdString(std::get<4>(updateInfo));
+
+        try
+        {
+            const QString binaryFilename = QUrl(downloadUrl).fileName();
+            QPair<QString, QString> signers;
+            const QString signedHash = Updater().fetchSignedHash(binaryFilename, hashFromDns, signers).toHex();
+
+            qInfo() << "Update found" << version << downloadUrl << "hash" << signedHash << "signed by" << signers;
+            emit checkUpdatesComplete(version, downloadUrl, signedHash, signers.first, signers.second);
+        }
+        catch (const std::exception &e)
+        {
+            qCritical() << "Failed to fetch and verify signed hash:" << e.what();
+        }
     });
 }
-
-
 
 QString WalletManager::checkUpdates(const QString &software, const QString &subdir) const
 {

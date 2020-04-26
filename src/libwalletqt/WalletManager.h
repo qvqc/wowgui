@@ -36,7 +36,6 @@
 #include <QMutex>
 #include <QPointer>
 #include <QWaitCondition>
-#include <QMutex>
 #include "qt/FutureScheduler.h"
 #include "NetworkType.h"
 
@@ -83,7 +82,7 @@ public:
     Q_INVOKABLE void openWalletAsync(const QString &path, const QString &password, NetworkType::Type nettype = NetworkType::MAINNET, quint64 kdfRounds = 1);
 
     // wizard: recoveryWallet path; hint: internally it recorvers wallet and set password = ""
-    Q_INVOKABLE Wallet * recoveryWallet(const QString &path, const QString &memo,
+    Q_INVOKABLE Wallet * recoveryWallet(const QString &path, const QString &seed, const QString &seed_offset,
                                        NetworkType::Type nettype = NetworkType::MAINNET, quint64 restoreHeight = 0, quint64 kdfRounds = 1);
 
     Q_INVOKABLE Wallet * createWalletFromKeys(const QString &path,
@@ -192,7 +191,12 @@ signals:
     void walletPassphraseNeeded();
     void deviceButtonRequest(quint64 buttonCode);
     void deviceButtonPressed();
-    void checkUpdatesComplete(const QString &result) const;
+    void checkUpdatesComplete(
+        const QString &version,
+        const QString &downloadUrl,
+        const QString &hash,
+        const QString &firstSigner,
+        const QString &secondSigner) const;
     void miningStatus(bool isMining) const;
 
 public slots:

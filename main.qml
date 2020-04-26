@@ -94,8 +94,8 @@ ApplicationWindow {
     property var fiatPriceAPIs: {
         return {
             "coingecko": {
-                "wowusd": "https://api.coingecko.com/api/v3/simple/price?ids=wownero&vs_currencies=usd",
-                "woweur": "https://api.coingecko.com/api/v3/simple/price?ids=wownero&vs_currencies=eur"
+                "xmrusd": "https://api.coingecko.com/api/v3/simple/price?ids=wownero&vs_currencies=usd",
+                "xmreur": "https://api.coingecko.com/api/v3/simple/price?ids=wownero&vs_currencies=eur"
             }
         }
     }
@@ -1127,26 +1127,26 @@ ApplicationWindow {
         triggeredOnStart: false
     }
 
-    function fiatApiParseTicker(resp, currency){
+    function fiatApiParseTicker(url, resp, currency){
         // parse & validate incoming JSON
-        if(resp._url.startsWith("https://api.kraken.com/0/")){
+        if(url.startsWith("https://api.kraken.com/0/")){
             if(resp.hasOwnProperty("error") && resp.error.length > 0 || !resp.hasOwnProperty("result")){
                 appWindow.fiatApiError("Kraken API has error(s)");
                 return;
             }
 
-            var key = currency === "woweur" ? "XXMRZEUR" : "XXMRZUSD";
+            var key = currency === "xmreur" ? "XXMRZEUR" : "XXMRZUSD";
             var ticker = resp.result[key]["o"];
             return ticker;
-        } else if(resp._url.startsWith("https://api.coingecko.com/api/v3/")){
-            var key = currency === "woweur" ? "eur" : "usd";
-            if(!resp.hasOwnProperty("wownero") || !resp["wownero"].hasOwnProperty(key)){
+        } else if(url.startsWith("https://api.coingecko.com/api/v3/")){
+            var key = currency === "xmreur" ? "eur" : "usd";
+            if(!resp.hasOwnProperty("monero") || !resp["monero"].hasOwnProperty(key)){
                 appWindow.fiatApiError("Coingecko API has error(s)");
                 return;
             }
-            return resp["wownero"][key];
-        } else if(resp._url.startsWith("https://min-api.cryptocompare.com/data/")){
-            var key = currency === "woweur" ? "EUR" : "USD";
+            return resp["monero"][key];
+        } else if(url.startsWith("https://min-api.cryptocompare.com/data/")){
+            var key = currency === "xmreur" ? "EUR" : "USD";
             if(!resp.hasOwnProperty(key)){
                 appWindow.fiatApiError("cryptocompare API has error(s)");
                 return;
@@ -1155,13 +1155,7 @@ ApplicationWindow {
         }
     }
 
-    function fiatApiGetCurrency(resp){
-        // map response to `appWindow.fiatPriceAPIs` object
-        if (!resp.hasOwnProperty('_url')){
-            appWindow.fiatApiError("invalid JSON");
-            return;
-        }
-
+    function fiatApiGetCurrency(url) {
         var apis = appWindow.fiatPriceAPIs;
         for (var api in apis){
             if (!apis.hasOwnProperty(api))
@@ -1171,23 +1165,34 @@ ApplicationWindow {
                 if(!apis[api].hasOwnProperty(cur))
                     continue;
 
-                var url = apis[api][cur];
-                if(url === resp._url){
+                if (apis[api][cur] === url) {
                     return cur;
                 }
             }
         }
     }
 
-    function fiatApiJsonReceived(resp){
+    function fiatApiJsonReceived(url, resp, error) {
+        if (error) {
+            appWindow.fiatApiError(error);
+            return;
+        }
+
+        try {
+            resp = JSON.parse(resp);
+        } catch (e) {
+            appWindow.fiatApiError("bad JSON: " + e);
+            return;
+        }
+
         // handle incoming JSON, set ticker
-        var currency = appWindow.fiatApiGetCurrency(resp);
+        var currency = appWindow.fiatApiGetCurrency(url);
         if(typeof currency == "undefined"){
             appWindow.fiatApiError("could not get currency");
             return;
         }
 
-        var ticker = appWindow.fiatApiParseTicker(resp, currency);
+        var ticker = appWindow.fiatApiParseTicker(url, resp, currency);
         if(ticker <= 0){
             appWindow.fiatApiError("could not get ticker");
             return;
@@ -1219,7 +1224,7 @@ ApplicationWindow {
         }
 
         var url = provider[userCurrency];
-        Prices.getJSON(url);
+        Network.getJSON(url, fiatApiJsonReceived);
     }
 
     function fiatApiCurrencySymbol() {
@@ -1277,7 +1282,6 @@ ApplicationWindow {
         walletManager.checkUpdatesComplete.connect(onWalletCheckUpdatesComplete);
         walletManager.walletPassphraseNeeded.connect(onWalletPassphraseNeeded);
         IPC.uriHandler.connect(onUriHandler);
-        Prices.priceJsonReceived.connect(appWindow.fiatApiJsonReceived);
 
         if(typeof daemonManager != "undefined") {
             daemonManager.daemonStarted.connect(onDaemonStarted);
@@ -1355,6 +1359,7 @@ ApplicationWindow {
         property int segregationHeight: 0
         property int kdfRounds: 1
         property bool hideBalance: false
+        property bool askPasswordBeforeSending: true
         property bool lockOnUserInActivity: true
         property int walletMode: 2
         property int lockOnUserInActivityInterval: 10  // minutes
@@ -1390,21 +1395,28 @@ ApplicationWindow {
         z: parent.z + 1
         id: transactionConfirmationPopup
         onAccepted: {
+            var handleAccepted = function() {
+                // Save transaction to file if view only wallet
+                if (viewOnly) {
+                    saveTxDialog.open();
+                } else {
+                    handleTransactionConfirmed()
+                }
+            }
             close();
             passwordDialog.onAcceptedCallback = function() {
                 if(walletPassword === passwordDialog.password){
-                    // Save transaction to file if view only wallet
-                    if(viewOnly) {
-                        saveTxDialog.open();
-                    } else {
-                        handleTransactionConfirmed()
-                    }
+                    handleAccepted()
                 } else {
                     passwordDialog.showError(qsTr("Wrong password") + translationManager.emptyString);
                 }
             }
             passwordDialog.onRejectedCallback = null;
-            passwordDialog.open()
+            if(!persistentSettings.askPasswordBeforeSending) {
+                handleAccepted()
+            } else {
+                passwordDialog.open()  
+            }
         }
     }
 
@@ -1422,6 +1434,14 @@ ApplicationWindow {
             if (onRejectedCallback)
                 onRejectedCallback();
         }
+    }
+
+    MoneroComponents.UpdateDialog {
+        id: updateDialog
+
+        allowed: !passwordDialog.visible && !inputDialog.visible && !splash.visible
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 2
     }
 
     // Choose blockchain folder
@@ -1599,12 +1619,6 @@ ApplicationWindow {
                     updateBalance();
                 }
 
-                onMerchantClicked: {
-                    middlePanel.state = "Merchant";
-                    middlePanel.flickable.contentY = 0;
-                    updateBalance();
-                }
-
                 onTxkeyClicked: {
                     middlePanel.state = "TxKey";
                     middlePanel.flickable.contentY = 0;
@@ -1679,7 +1693,7 @@ ApplicationWindow {
             anchors.fill: blurredArea
             source: blurredArea
             radius: 64
-            visible: passwordDialog.visible || inputDialog.visible || splash.visible
+            visible: passwordDialog.visible || inputDialog.visible || splash.visible || updateDialog.visible
         }
 
 
@@ -1785,11 +1799,6 @@ ApplicationWindow {
                 font.pixelSize: 12
                 color: "#FFFFFF"
             }
-        }
-
-        Notifier {
-            visible:false
-            id: notifier
         }
     }
 
@@ -1963,24 +1972,7 @@ ApplicationWindow {
         closeWallet(Qt.quit);
     }
 
-    function onWalletCheckUpdatesComplete(update) {
-        if (update === "")
-            return
-        print("Update found: " + update)
-        var parts = update.split("|")
-        if (parts.length == 4) {
-            var version = parts[0]
-            var hash = parts[1]
-            var user_url = parts[2]
-            var msg = qsTr("New version of Wownero v%1 is available.").arg(version)
-            if (isMac || isWindows || isLinux) {
-                msg += "<br><br>%1:<br>%2<br><br>%3:<br>%4".arg(qsTr("Download")).arg(user_url).arg(qsTr("SHA256 Hash")).arg(hash) + translationManager.emptyString
-            } else {
-                msg += " " + qsTr("Check out wownero.org") + translationManager.emptyString
-            }
-            notifier.show(msg)
-        } else {
-            print("Failed to parse update spec")
+
         }
     }
 
@@ -2089,6 +2081,11 @@ ApplicationWindow {
             targetObj: parent
             blackColor: "black"
             whiteColor: "white"
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
         }
     }
 

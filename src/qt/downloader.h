@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -26,23 +26,42 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef UTILS_H
-#define UTILS_H
+#pragma once
 
-#include <QtCore>
-#include <QRegExp>
-#include <QApplication>
+#include <QReadWriteLock>
 
-bool fileExists(QString path);
-QByteArray fileGetContents(QString path);
-QByteArray fileOpen(QString path);
-bool fileWrite(QString path, QString data);
-QString getAccountName();
-#ifdef Q_OS_LINUX
-QString xdgMime(QApplication &app);
-void registerXdgMime(QApplication &app);
-#endif
-const static QRegExp reURI = QRegExp("^\\w+:\\/\\/([\\w+\\-?\\-_\\-=\\-&]+)");
-QString randomUserAgent();
+#include "network.h"
 
-#endif // UTILS_H
+class Downloader : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY(bool active READ active NOTIFY activeChanged);
+    Q_PROPERTY(quint64 loaded READ loaded NOTIFY loadedChanged);
+    Q_PROPERTY(quint64 total READ total NOTIFY totalChanged);
+
+public:
+    Downloader(QObject *parent = nullptr);
+    ~Downloader();
+
+    Q_INVOKABLE void cancel();
+    Q_INVOKABLE bool get(const QString &url, const QString &hash, const QJSValue &callback);
+    Q_INVOKABLE bool saveToFile(const QString &path) const;
+
+signals:
+    void activeChanged() const;
+    void loadedChanged() const;
+    void totalChanged() const;
+
+private:
+    bool active() const;
+    quint64 loaded() const;
+    quint64 total() const;
+
+private:
+    bool m_active;
+    std::string m_contents;
+    std::shared_ptr<HttpClient> m_httpClient;
+    mutable QReadWriteLock m_mutex;
+    Network m_network;
+    mutable FutureScheduler m_scheduler;
+};

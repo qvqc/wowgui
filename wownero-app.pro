@@ -76,11 +76,12 @@ HEADERS += \
     src/libwalletqt/UnsignedTransaction.h \
     src/main/Logger.h \
     src/main/MainApp.h \
+    src/qt/downloader.h \
     src/qt/FutureScheduler.h \
     src/qt/ipc.h \
     src/qt/KeysFiles.h \
+    src/qt/network.h \
     src/qt/utils.h \
-    src/qt/prices.h \
     src/qt/macoshelper.h \
     src/qt/MoneroSettings.h \
     src/qt/TailsOS.h
@@ -96,6 +97,7 @@ SOURCES += src/main/main.cpp \
     src/libwalletqt/TransactionInfo.cpp \
     src/libwalletqt/QRCodeImageProvider.cpp \
     src/main/oshelper.cpp \
+    src/openpgp/openpgp.cpp \
     src/TranslationManager.cpp \
     src/model/TransactionHistoryModel.cpp \
     src/model/TransactionHistorySortFilterModel.cpp \
@@ -112,11 +114,13 @@ SOURCES += src/main/main.cpp \
     src/libwalletqt/UnsignedTransaction.cpp \
     src/main/Logger.cpp \
     src/main/MainApp.cpp \
+    src/qt/downloader.cpp \
     src/qt/FutureScheduler.cpp \
     src/qt/ipc.cpp \
     src/qt/KeysFiles.cpp \
+    src/qt/network.cpp \
+    src/qt/updater.cpp \
     src/qt/utils.cpp \
-    src/qt/prices.cpp \
     src/qt/MoneroSettings.cpp \
     src/qt/TailsOS.cpp
 
@@ -157,6 +161,8 @@ ios:arm64 {
 }
 
 LIBS_COMMON = \
+    -lgcrypt \
+    -lgpg-error \
     -lwallet_merged \
     -llmdb \
     -lepee \
@@ -224,6 +230,14 @@ CONFIG(WITH_SCANNER) {
             LIBS += -lzbarjni -liconv
         } else {
             LIBS += -lzbar
+            macx {
+                ZBAR_DIR = $$system(brew --prefix zbar, lines, EXIT_CODE)
+                equals(EXIT_CODE, 0) {
+                    INCLUDEPATH += $$ZBAR_DIR/include
+                } else {
+                    INCLUDEPATH += /usr/local/include
+                }
+            }
         }
     } else {
         message("Skipping camera scanner because of Incompatible Qt Version !")
@@ -385,6 +399,20 @@ macx {
     BOOST_DIR = $$system(brew --prefix boost, lines, EXIT_CODE)
     equals(EXIT_CODE, 0) {
         INCLUDEPATH += $$BOOST_DIR/include
+    } else {
+        INCLUDEPATH += /usr/local/include
+    }
+
+    GCRYPT_DIR = $$system(brew --prefix libgcrypt, lines, EXIT_CODE)
+    equals(EXIT_CODE, 0) {
+        INCLUDEPATH += $$GCRYPT_DIR/include
+    } else {
+        INCLUDEPATH += /usr/local/include
+    }
+
+    GPGP_ERROR_DIR = $$system(brew --prefix libgpg-error, lines, EXIT_CODE)
+    equals(EXIT_CODE, 0) {
+        INCLUDEPATH += $$GPGP_ERROR_DIR/include
     } else {
         INCLUDEPATH += /usr/local/include
     }
