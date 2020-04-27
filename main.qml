@@ -1973,8 +1973,8 @@ ApplicationWindow {
     }
 
 
-        }
-    }
+    //    }
+   // }
 
     function checkUpdates() {
         walletManager.checkUpdatesAsync("wownero-app", "app")
